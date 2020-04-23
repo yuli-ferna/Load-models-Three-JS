@@ -11,16 +11,17 @@ const Stats = require('stats.js');
 
 //controles orbitales
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-//controles por teclado
-import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
-import { LightShadow } from 'three';
+//Model loaders
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+//Basis Texture loader
+import { BasisTextureLoader } from 'three/examples/jsm/loaders/BasisTextureLoader.js';
+
 import CameraControls from 'camera-controls';
 
 
-CameraControls.install( { THREE: THREE } );
+// CameraControls.install( { THREE: THREE } );
 const canvas = document.getElementById('canvas');
 const clock = new THREE.Clock();
  // Optional: Pre-fetch Draco WASM/JS module.
@@ -30,21 +31,15 @@ var renderer, scene, bgScene, camera, cameraControls;
 var bgMesh;
 
 var controls;
-var mixer;
+var mixer, mixer2;
 //Lights
 var spotLight, light, hemisLight;
-var light1, light2, light3, light4;
-var spotLightHelper, pLightHelper1, pLightHelper2, pLightHelper3, pLightHelper4;
+var spotLightHelper;
 
 //Interface
 var gui;
 var obj;
 var stats;
-
-//Models
-var sphere;
-var torusKnot;
-var plane;
 
 //movement speed variable
 let speedMovement = 300;
@@ -74,16 +69,6 @@ function init()
 		penunmbra: 0.2,
 		helpSpot:true,
 		intSpot:1,
-	
-		
-		intPoint1: 1,
-		intPoint2: 1,
-		intPoint3: 1,
-		intPoint4: 1,
-		helpPoint1:false,
-		helpPoint2:false,
-		helpPoint3:false,
-		helpPoint4:false,
 		
 		intAmbien:1,
 		color0: "#443333", 
@@ -184,32 +169,9 @@ function movement(direction, speed){
 		cameraControls.truck(speed*delta*moveX,0,true);
 	}
 
-	// if(!audioPlaying(greenSphere)){
-	// 	(colisionDetector(cameraControls, greenSphere)) ? audioManager.startAudio(greenSphere) : false;
-	// }
 }
 function main() {
-	bgScene = new THREE.Scene();
-	const loader = new THREE.TextureLoader();
-	const texture = loader.load(
-		'assets/tears_of_steel_bridge_2k.jpg',
-	);
-	texture.magFilter = THREE.LinearFilter;
-	texture.minFilter = THREE.LinearFilter;
-	
-	const shader = THREE.ShaderLib.equirect;
-		const material = new THREE.ShaderMaterial({
-		fragmentShader: shader.fragmentShader,
-		vertexShader: shader.vertexShader,
-		uniforms: shader.uniforms,
-		depthWrite: false,
-		side: THREE.BackSide,
-	});
-		material.uniforms.tEquirect.value = texture;
-	const planeScene = new THREE.BoxBufferGeometry(2, 2, 2);
-	bgMesh = new THREE.Mesh(planeScene, material);
-	// bgScene.add(bgMesh);
-	
+
 	
 	//Renderer
 	renderer.setClearColor(0x222222);
@@ -225,30 +187,68 @@ function main() {
 	camera.position.y = 2;
 	camera.position.z = 6;
 	camera.lookAt( 0, 0.1, 0 );
-	// controls = new OrbitControls( camera, renderer.domElement );
-	cameraControls = new CameraControls( camera, renderer.domElement );
+    controls = new OrbitControls( camera, renderer.domElement );
+
+	// cameraControls = new CameraControls( camera, renderer.domElement );
 	// cameraControls.setLookAt( 40, 40, 40, 0.0001, 2, 0, false );
-	cameraControls.maxDistance = 0.0001;
-	cameraControls.minDistance = 0;
-	cameraControls.mouseButtons.wheel =CameraControls.ACTION.NONE;
+	// cameraControls.maxDistance = 0.0001;
+	// cameraControls.minDistance = 0;
+	// cameraControls.mouseButtons.wheel =CameraControls.ACTION.NONE;
 	// cameraControls.truckSpeed = 2.0;
 
 	addLights();
 	loadDraco('model/draco/alocasia_s.drc');
 	loadGLTF('model/gltf/Duck.gltf', [1, -0.05, 0], [0.5, 0.5, 0.5]);
 	loadGLTF('model/glb/Flamingo.glb', [-2, 2, 1], [0.01, 0.01, 0.01]);
-	loadFBX('model/fbx/avatar1.fbx', [2, 0, -1], [0.01, 0.01, 0.01]);
+	loadFBX('model/fbx/avatar1.fbx', [2, 0, -1], [0.01, 0.01, 0.01]).then(function(obj1){
+		console.log('termine!');
+		mixer = new THREE.AnimationMixer( obj1 );
+		var action = mixer.clipAction( obj1.animations[ 0 ] );
+		action.play();
+		
+	})
+	loadFBX('model/fbx/avatar2.fbx', [4, 0, -1], [0.01, 0.01, 0.01]).then(function(obj1){
+		console.log('termine!');
+		mixer2 = new THREE.AnimationMixer( obj1 );
+		var action = mixer2.clipAction( obj1.animations[ 0 ] );
+		action.play();
+		
+	})
 	
     var plane = new THREE.Mesh(
         new THREE.PlaneBufferGeometry( 80, 80 ),
-        new THREE.MeshPhongMaterial( { color: 0x999999, specular: 0x101010 } )
-    );
+		new THREE.MeshPhongMaterial( { color: 0x999999, specular: 0x101010 } )
+		);
     plane.rotation.x = - Math.PI / 2;
     // plane.position.y = 0.03;
     plane.receiveShadow = true;
-    scene.add( plane );
-
+	scene.add( plane );
 	
+
+	var loader = new BasisTextureLoader();
+	var material1 = new THREE.MeshBasicMaterial();
+	loader.setTranscoderPath( 'js/libs/basis/' );
+	loader.detectSupport( renderer );
+	loader.load( 'assets/PavingStones.basis', function ( texture ) {
+
+		texture.encoding = THREE.sRGBEncoding;
+		material1.map = texture;
+		material1.needsUpdate = true;
+		// return material;
+
+	}, undefined, function ( error ) {
+		console.error( error );
+		// return new THREE.MeshPhongMaterial( { color: 0x999999, specular: 0x101010 } );
+	} );
+	
+    var cube = new THREE.Mesh(
+        new THREE.BoxGeometry( 0.5,0.5,0.5 ),
+		material1);
+    cube.position.set(-3,2,1);
+    // cube.position.y = 0.03;
+    cube.receiveShadow = true;
+    scene.add( cube );
+
 	
 
 	addGUI();
@@ -258,32 +258,35 @@ function main() {
 }
 
 function loadFBX(path,pos,scale) {
-	var loader = new FBXLoader();
-	loader.load( path, function ( object ) {
-
-		mixer = new THREE.AnimationMixer( object );
-		console.log(object);
-		object.scale.set(scale[0], scale[1], scale[2]);
-		object.position.set(pos[0], pos[1], pos[2]);
-
-		var action = mixer.clipAction( object.animations[ 0 ] );
-		action.play();
-			
-		object.traverse( function ( child ) {
-
-			if ( child.isMesh ) {
-
-				child.castShadow = true;
-				child.receiveShadow = true;
-
+	const promise = new Promise(function (resolve, reject) {
+		var loader = new FBXLoader();
+		loader.load( path, function ( object ) {
+	
+			// mixer = new THREE.AnimationMixer( object );
+			console.log(object);
+			object.scale.set(scale[0], scale[1], scale[2]);
+			object.position.set(pos[0], pos[1], pos[2]);
+			// var action = mixer.clipAction( object.animations[ 0 ] );
+			// action.play();
+				
+			object.traverse( function ( child ) {
+				if ( child.isMesh ) {
+					child.castShadow = true;
+					child.receiveShadow = true;
+				}
+			} );
+			scene.add( object );
+			console.log(object);
+			if (object == null) {
+				reject();
+			}else{
+				resolve(object);
 			}
-
+	
 		} );
-		console.log(object);
 		
-		scene.add( object );
-
-	} );
+	})
+	return promise;
 }
 
 function loadGLTF(path, pos,scale) {
@@ -358,6 +361,25 @@ function loadDraco(path) {
 	} );
 }
 
+function loadBasisTexture(path){
+	var loader = new BasisTextureLoader();
+	loader.setTranscoderPath( 'js/libs/basis/' );
+	loader.detectSupport( renderer );
+	loader.load( path, function ( texture ) {
+		var material = new THREE.MeshBasicMaterial();
+
+		texture.encoding = THREE.sRGBEncoding;
+		material.map = texture;
+		material.needsUpdate = true;
+		return material;
+
+	}, undefined, function ( error ) {
+		console.error( error );
+		return new THREE.MeshPhongMaterial( { color: 0x999999, specular: 0x101010 } );
+	} );
+
+}
+
 //Event function when a key is pressed
 let onKeyDown = function ( event ) {
 	switch ( event.keyCode ) {
@@ -414,7 +436,7 @@ function displayWindowSize(){
 	var h = document.documentElement.clientHeight;
 	
 	// Display result inside a div element
-	console.log("Width: " + w + ", " + "Height: " + h);
+	// console.log("Width: " + w + ", " + "Height: " + h);
 	renderer.setSize(w, h);
 	// camera.fov = Math.atan(window.innerHeight / 2 / camera.position.z) * 2 * THREE.Math.RAD2DEG;
 	camera.aspect = w / h;
@@ -423,31 +445,27 @@ function displayWindowSize(){
 
 // Attaching the event listener function to window's resize event
 window.addEventListener("resize", displayWindowSize);
-document.addEventListener( 'keydown', onKeyDown, false );
-document.addEventListener( 'keyup', onKeyUp, false );
+// document.addEventListener( 'keydown', onKeyDown, false );
+// document.addEventListener( 'keyup', onKeyUp, false );
 
 function animate() 
 {
-	const delta = clock.getDelta();
-    const hasControlsUpdated = cameraControls.update( delta );
+	// const hasControlsUpdated = cameraControls.update( delta );
 	requestAnimationFrame(animate);
 	render();
 	// controls.update();
 	stats.update();	
-	
-	if ( mixer ) mixer.update( delta );
-	if ( hasControlsUpdated ) {
- 
-		// renderer.render( scene, camera );
- 
-	}
-	bgMesh.position.copy(camera.position);
-    renderer.render(bgScene, camera);
+	controls.update();
 	renderer.render(scene, camera);
 }
 
+
 function render() 
 {
+	const delta = clock.getDelta();
+	//Para la animacion
+	if ( mixer ) mixer.update( delta );
+	if ( mixer2 ) mixer2.update( delta );
 	
 	
 }
