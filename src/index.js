@@ -31,7 +31,7 @@ var renderer, scene, bgScene, camera, cameraControls;
 var bgMesh;
 
 var controls;
-var mixer, mixer2;
+var mixer, mixer2,mixerCap;
 //Lights
 var spotLight, light, hemisLight;
 var spotLightHelper;
@@ -40,16 +40,6 @@ var spotLightHelper;
 var gui;
 var obj;
 var stats;
-
-//movement speed variable
-let speedMovement = 300;
-let moveForward = false;
-let moveBackward = false;
-let moveLeft = false;
-let moveRight = false;
-
-
-
 
 function init() 
 {
@@ -155,21 +145,6 @@ function addGUI()
 	
 }
 
-//Move the camera according to a direction, and speed received as parameter event received
-//the delta factor will divide the movement speed by 100 but will make it feel smoother to the controler
-function movement(direction, speed){
-	let delta = clock.getDelta()
-	let moveZ = Number(moveForward) -Number(moveBackward);
-	let moveX = Number(moveRight) - Number(moveLeft);
-
-	if (moveForward || moveBackward) {
-		cameraControls.forward(speed*delta*moveZ,true);
-	}
-	if (moveLeft || moveRight) {
-		cameraControls.truck(speed*delta*moveX,0,true);
-	}
-
-}
 function main() {
 
 	
@@ -178,8 +153,10 @@ function main() {
 	renderer.autoClearColor = false;
     renderer.setPixelRatio( window.devicePixelRatio );
 	renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.outputEncoding = THREE.sRGBEncoding;
-	renderer.shadowMap.enabled = true;
+	renderer.outputEncoding = THREE.sRGBEncoding;
+	renderer.gammaOutput = true;
+    renderer.gammaFactor = 2.2;
+    renderer.shadowMap.enabled = true;
 	renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
 	
 	//Camera
@@ -189,28 +166,25 @@ function main() {
 	camera.lookAt( 0, 0.1, 0 );
     controls = new OrbitControls( camera, renderer.domElement );
 
-	// cameraControls = new CameraControls( camera, renderer.domElement );
-	// cameraControls.setLookAt( 40, 40, 40, 0.0001, 2, 0, false );
-	// cameraControls.maxDistance = 0.0001;
-	// cameraControls.minDistance = 0;
-	// cameraControls.mouseButtons.wheel =CameraControls.ACTION.NONE;
-	// cameraControls.truckSpeed = 2.0;
-
 	addLights();
-	loadDraco('model/draco/alocasia_s.drc');
-	loadGLTF('model/gltf/Duck.gltf', [1, -0.05, 0], [0.5, 0.5, 0.5]);
-	loadGLTF('model/glb/Flamingo.glb', [-2, 2, 1], [0.01, 0.01, 0.01]);
-	loadFBX('model/fbx/avatar1.fbx', [2, 0, -1], [0.01, 0.01, 0.01]).then(function(obj1){
-		console.log('termine!');
-		mixer = new THREE.AnimationMixer( obj1 );
-		var action = mixer.clipAction( obj1.animations[ 0 ] );
+
+	//Models
+	// loadDraco('model/draco/alocasia_s.drc');
+	// loadGLTF('model/glb/Flamingo.glb', [-2, 2, 1], [0.01, 0.01, 0.01]);
+	loadGLTF('model/gltf/capoeira/Capoeira.gltf', [1, 0, 0], [0.01, 0.01, 0.01]).then(function(gltf){
+		console.log('termine gltf!');
+		mixerCap = new THREE.AnimationMixer( gltf.scene );
+		var action = mixerCap.clipAction( gltf.animations[ 0 ] );
 		action.play();
 		
-	})
-	loadFBX('model/fbx/avatar2.fbx', [4, 0, -1], [0.01, 0.01, 0.01]).then(function(obj1){
-		console.log('termine!');
-		mixer2 = new THREE.AnimationMixer( obj1 );
-		var action = mixer2.clipAction( obj1.animations[ 0 ] );
+	}).catch(function (err) {
+		console.log(err);
+		
+	});
+	loadFBX('model/fbx/avatar1.fbx', [2, 0, -1], [0.01, 0.01, 0.01]).then(function(obj1){
+		// console.log('termine!');
+		mixer = new THREE.AnimationMixer( obj1 );
+		var action = mixer.clipAction( obj1.animations[ 0 ] );
 		action.play();
 		
 	})
@@ -220,41 +194,9 @@ function main() {
 		new THREE.MeshPhongMaterial( { color: 0x999999, specular: 0x101010 } )
 		);
     plane.rotation.x = - Math.PI / 2;
-    // plane.position.y = 0.03;
     plane.receiveShadow = true;
 	scene.add( plane );
-	
-
-	var loader = new BasisTextureLoader();
-	var material1 = new THREE.MeshBasicMaterial();
-	loader.setTranscoderPath( 'js/libs/basis/' );
-	loader.detectSupport( renderer );
-	loader.load( 'assets/PavingStones.basis', function ( texture ) {
-
-		texture.encoding = THREE.sRGBEncoding;
-		material1.map = texture;
-		material1.needsUpdate = true;
-		// return material;
-
-	}, undefined, function ( error ) {
-		console.error( error );
-		// return new THREE.MeshPhongMaterial( { color: 0x999999, specular: 0x101010 } );
-	} );
-	
-    var cube = new THREE.Mesh(
-        new THREE.BoxGeometry( 0.5,0.5,0.5 ),
-		material1);
-    cube.position.set(-3,2,1);
-    // cube.position.y = 0.03;
-    cube.receiveShadow = true;
-    scene.add( cube );
-
-	
-
 	addGUI();
-	// controls.target.copy( plane.position );
-	// controls.update();
-	
 }
 
 function loadFBX(path,pos,scale) {
@@ -262,12 +204,9 @@ function loadFBX(path,pos,scale) {
 		var loader = new FBXLoader();
 		loader.load( path, function ( object ) {
 	
-			// mixer = new THREE.AnimationMixer( object );
 			console.log(object);
 			object.scale.set(scale[0], scale[1], scale[2]);
 			object.position.set(pos[0], pos[1], pos[2]);
-			// var action = mixer.clipAction( object.animations[ 0 ] );
-			// action.play();
 				
 			object.traverse( function ( child ) {
 				if ( child.isMesh ) {
@@ -290,49 +229,58 @@ function loadFBX(path,pos,scale) {
 }
 
 function loadGLTF(path, pos,scale) {
-	// Instantiate a loader
-	var loader = new GLTFLoader();
+	return new Promise((resolve, reject)=>{
 
-	// Optional: Provide a DRACOLoader instance to decode compressed mesh data
-	var dracoLoader = new DRACOLoader();
-	// dracoLoader.setDecoderPath( '/examples/js/libs/draco/' );
-	dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
-	loader.setDRACOLoader( dracoLoader );
-
-	// Load a glTF resource
-	loader.load(
-		// resource URL
-		path,
-		// called when the resource is loaded
-		function ( gltf ) {
-			//Transformations
-			gltf.scene.scale.set(scale[0], scale[1], scale[2]);
-			gltf.scene.position.set(pos[0], pos[1], pos[2]);
-			gltf.scene.castShadow = true;
-			gltf.scene.receiveShadow = true;
-
-			scene.add( gltf.scene );
-			console.log(gltf);
-			
-			gltf.animations; // Array<THREE.AnimationClip>
-			gltf.scene; // THREE.Group
-			gltf.scenes; // Array<THREE.Group>
-			gltf.cameras; // Array<THREE.Camera>
-			gltf.asset; // Object
-
-		},
-		// called while loading is progressing
-		function ( xhr ) {
-
-			console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
-
-		},
-		// called when loading has errors
-		function ( error ) {
-
-			console.log( 'An error happened' );
-
-		});	
+		// Instantiate a loader
+		var loader = new GLTFLoader();
+	
+		// Optional: Provide a DRACOLoader instance to decode compressed mesh data
+		var dracoLoader = new DRACOLoader();
+		// dracoLoader.setDecoderPath( '/examples/js/libs/draco/' );
+		dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
+		loader.setDRACOLoader( dracoLoader );
+	
+		// Load a glTF resource
+		loader.load(
+			// resource URL
+			path,
+			// called when the resource is loaded
+			function ( gltf ) {
+				//Transformations
+				gltf.scene.scale.set(scale[0], scale[1], scale[2]);
+				gltf.scene.position.set(pos[0], pos[1], pos[2]);
+				gltf.scene.castShadow = true;
+				gltf.scene.receiveShadow = true;
+				gltf.scene.traverse( function ( child ) {
+					if ( child.isMesh ) {
+						child.castShadow = true;
+						child.receiveShadow = true;
+					}
+				} );
+				scene.add( gltf.scene );
+				console.log(gltf);
+				
+				gltf.animations; // Array<THREE.AnimationClip>
+				gltf.scene; // THREE.Group
+				gltf.scenes; // Array<THREE.Group>
+				gltf.cameras; // Array<THREE.Camera>
+				gltf.asset; // Object
+				resolve(gltf)
+	
+			},
+			// called while loading is progressing
+			function ( xhr ) {
+	
+				console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+	
+			},
+			// called when loading has errors
+			function ( error ) {
+	
+				console.log( 'An error happened' );
+				reject(error);
+			});	
+	});
 }
 
 function loadDraco(path) {
@@ -362,73 +310,26 @@ function loadDraco(path) {
 }
 
 function loadBasisTexture(path){
-	var loader = new BasisTextureLoader();
-	loader.setTranscoderPath( 'js/libs/basis/' );
-	loader.detectSupport( renderer );
-	loader.load( path, function ( texture ) {
-		var material = new THREE.MeshBasicMaterial();
-
-		texture.encoding = THREE.sRGBEncoding;
-		material.map = texture;
-		material.needsUpdate = true;
-		return material;
-
-	}, undefined, function ( error ) {
-		console.error( error );
-		return new THREE.MeshPhongMaterial( { color: 0x999999, specular: 0x101010 } );
-	} );
+	return new Promise((resolve, reject)=>{
+		var material = new THREE.MeshStandardMaterial();
+		var loader = new BasisTextureLoader();
+		loader.setTranscoderPath( 'js/libs/basis/' );
+		loader.detectSupport( renderer );
+		loader.load( path, function ( texture ) {
+	
+			texture.encoding = THREE.sRGBEncoding;
+			material.map = texture;
+			material.needsUpdate = true;
+			resolve (material);
+	
+		}, undefined, function ( error ) {
+			console.error( error );
+			reject (error);
+		} );
+		
+	})
 
 }
-
-//Event function when a key is pressed
-let onKeyDown = function ( event ) {
-	switch ( event.keyCode ) {
-		case 38: // up
-		case 87: // w
-			moveForward = true;
-			movement(moveForward, speedMovement);
-			break;
-		case 37: // left
-		case 65: // a
-			moveLeft = true;
-			movement(moveLeft, speedMovement);
-			break;
-		case 40: // down
-		case 83: // s
-			moveBackward = true;
-			movement(moveBackward, speedMovement);
-			break;
-		case 39: // right
-		case 68: // d
-			moveRight = true;
-			movement(moveRight, speedMovement);
-			break;
-		
-		}
-
-};
-//event function that works when a key is released
-let onKeyUp = function ( event ) {
-	switch ( event.keyCode ) {
-		case 38: // up
-		case 87: // w
-			moveForward = false;
-			break;
-		case 37: // left
-		case 65: // a
-			moveLeft = false;
-			break;
-		case 40: // down
-		case 83: // s
-			moveBackward = false;
-			break;
-		case 39: // right
-		case 68: // d
-			moveRight = false;
-			break;
-		}
-};
-
 
 function displayWindowSize(){
 	// Get width and height of the window excluding scrollbars
@@ -466,6 +367,7 @@ function render()
 	//Para la animacion
 	if ( mixer ) mixer.update( delta );
 	if ( mixer2 ) mixer2.update( delta );
+	if ( mixerCap ) mixerCap.update( delta );
 	
 	
 }
