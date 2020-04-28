@@ -18,8 +18,6 @@ import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 //Basis Texture loader
 import { BasisTextureLoader } from 'three/examples/jsm/loaders/BasisTextureLoader.js';
 
-import CameraControls from 'camera-controls';
-
 
 // CameraControls.install( { THREE: THREE } );
 const canvas = document.getElementById('canvas');
@@ -27,11 +25,10 @@ const clock = new THREE.Clock();
  // Optional: Pre-fetch Draco WASM/JS module.
 // dracoLoader.preload();
 //Scene and render
-var renderer, scene, bgScene, camera, cameraControls;
+var renderer, scene, bgScene, camera;
 var bgMesh;
-
 var controls;
-var mixer, mixer2,mixerCap;
+var mixerCap;
 //Lights
 var spotLight, light, hemisLight;
 var spotLightHelper;
@@ -68,7 +65,6 @@ function init()
 	
 	renderer = new THREE.WebGLRenderer({ canvas });
 	scene = new THREE.Scene();
-    // scene.fog = new THREE.Fog( 0x443333, 1, 4 );
 
 	const fov = 35;
 	const aspect =  window.innerWidth/ window.innerHeight;  // the canvas default
@@ -77,7 +73,6 @@ function init()
 	camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
 	
 	//Lights
-	// spotLight = new THREE.SpotLight( 0xffff00 );
 	light = new THREE.AmbientLight( obj.color0 ); // soft white light
 	hemisLight = new THREE.HemisphereLight( obj.color0, obj.colorg, 1 );
 	
@@ -169,25 +164,22 @@ function main() {
 	addLights();
 
 	//Models
-	// loadDraco('model/draco/alocasia_s.drc');
-	// loadGLTF('model/glb/Flamingo.glb', [-2, 2, 1], [0.01, 0.01, 0.01]);
-	loadGLTF('model/gltf/capoeira/Capoeira.gltf', [1, 0, 0], [0.01, 0.01, 0.01]).then(function(gltf){
-		console.log('termine gltf!');
+	loadGLTFBasis('model/gltf/capoeira/Capoeira.gltf', [2, 0, -1], [0.02,0.02,0.02]).then(function (gltf) {
 		mixerCap = new THREE.AnimationMixer( gltf.scene );
-		var action = mixerCap.clipAction( gltf.animations[ 0 ] );
-		action.play();
-		
-	}).catch(function (err) {
-		console.log(err);
-		
+		if (gltf.animations[ 0 ]) {
+			var action = mixerCap.clipAction( gltf.animations[ 0 ] );
+			action.play();
+			
+		}
 	});
-	loadFBX('model/fbx/avatar1.fbx', [2, 0, -1], [0.01, 0.01, 0.01]).then(function(obj1){
-		// console.log('termine!');
-		mixer = new THREE.AnimationMixer( obj1 );
-		var action = mixer.clipAction( obj1.animations[ 0 ] );
-		action.play();
-		
-	})
+	loadGLTFBasis('model/gltf/duck/Duck.gltf', [0, 0, -1], [0.5,0.5,0.5]).then(function (gltf) {
+		// mixer1 = new THREE.AnimationMixer( gltf.scene );
+		// if (gltf.animations[ 0 ]) {
+		// 	var action = mixer1.clipAction( gltf.animations[ 0 ] );
+		// 	action.play();
+			
+		// }
+	});
 	
     var plane = new THREE.Mesh(
         new THREE.PlaneBufferGeometry( 80, 80 ),
@@ -199,6 +191,70 @@ function main() {
 	addGUI();
 }
 
+function loadGLTFBasis(path, pos, scale) {
+	return new Promise((resolve, reject)=>{
+
+	var basisLoader = new BasisTextureLoader();
+	basisLoader.setTranscoderPath( 'js/libs/basis/' );
+	basisLoader.useAlpha = false;
+	
+	basisLoader.detectSupport( renderer );
+
+	var loadingManager = new THREE.LoadingManager();
+	loadingManager.addHandler( /\.basis$/, basisLoader );
+	//Or this option for addHandler:
+	//THREE.DefaultLoadingManager.addHandler( /\.basis$/, basisLoader );
+
+	// model
+	var loader = new GLTFLoader(loadingManager);
+	// Optional: Provide a DRACOLoader instance to decode compressed mesh data
+	var dracoLoader = new DRACOLoader();
+	// dracoLoader.setDecoderPath( '/examples/js/libs/draco/' );
+	dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
+	loader.setDRACOLoader( dracoLoader );
+
+	// Load a glTF resource
+	loader.load(
+		// resource URL
+		path,
+		// called when the resource is loaded
+		function ( gltf ) {
+			//Transformations
+			gltf.scene.scale.set(scale[0], scale[1], scale[2]);
+			gltf.scene.position.set(pos[0], pos[1], pos[2]);
+			gltf.scene.castShadow = true;
+			gltf.scene.receiveShadow = true;
+			gltf.scene.traverse( function ( child ) {
+				if ( child.isMesh ) {
+					child.castShadow = true;
+					child.receiveShadow = true;
+				}
+			} );
+			scene.add( gltf.scene );
+			console.log(gltf);
+			
+			gltf.animations; // Array<THREE.AnimationClip>
+			gltf.scene; // THREE.Group
+			gltf.scenes; // Array<THREE.Group>
+			gltf.cameras; // Array<THREE.Camera>
+			gltf.asset; // Object
+			resolve(gltf);
+
+		},
+		// called while loading is progressing
+		function ( xhr ) {
+
+			console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+
+		},
+		// called when loading has errors
+		function ( error ) {
+
+			console.log( error);
+			reject(error);
+		});	
+	});
+}
 function loadFBX(path,pos,scale) {
 	const promise = new Promise(function (resolve, reject) {
 		var loader = new FBXLoader();
@@ -365,8 +421,6 @@ function render()
 {
 	const delta = clock.getDelta();
 	//Para la animacion
-	if ( mixer ) mixer.update( delta );
-	if ( mixer2 ) mixer2.update( delta );
 	if ( mixerCap ) mixerCap.update( delta );
 	
 	

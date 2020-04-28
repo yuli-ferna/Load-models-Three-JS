@@ -2972,12 +2972,14 @@
   ],
   "images": [
     {
+      "mimeType" : "image/basis",
       "name": "Ch03_1001_Diffuse",
-      "uri": ".\/Ch03_1001_Diffuse.png"
+      "uri": ".\/Ch03_1001_Diffuse.basis"
     },
     {
+      "mimeType" : "image/basis",
       "name": "Ch03_1001_Normal",
-      "uri": ".\/Ch03_1001_Normal.png"
+      "uri": ".\/Ch03_1001_Normal.basis"
     }
   ],
   "materials": [
