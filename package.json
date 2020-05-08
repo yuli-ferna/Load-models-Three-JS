@@ -6,6 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "webpack --config webpack.config.js",
+    "webpack-dev": "webpack --config webpack.config.js --display-error-details --mode=development --progress --watch",
     "start:dev": "webpack-dev-server"
   },
   "keywords": [],
