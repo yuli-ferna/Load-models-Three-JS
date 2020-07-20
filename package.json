@@ -13,7 +13,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.19",
     "three": "^0.115.0",
     "webpack": "^4.42.1",
     "webpack-cli": "^3.3.11",
